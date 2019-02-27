@@ -3,7 +3,6 @@ require 'omniauth-oauth2'
 module OmniAuth
   module Strategies
     class Kakao < OmniAuth::Strategies::OAuth2
-#       DEFAULT_REDIRECT_PATH = "/oauth"
 
       option :name, 'kakao'
 
@@ -19,30 +18,12 @@ module OmniAuth
         {
           'name' => raw_properties['nickname'],
           'image' => raw_properties['thumbnail_image'],
-          'email' => raw_properties['email']
         }
       end
 
       extra do
         {'properties' => raw_properties}
       end
-
-#       def initialize(app, *args, &block)
-#         super
-#         options[:callback_path] = options[:redirect_path] || DEFAULT_REDIRECT_PATH
-#       end
-
-#       def callback_phase
-#         previous_callback_path = options.delete(:callback_path)
-#         @env["PATH_INFO"] = "/auth/kakao/callback"
-#         options[:callback_path] = previous_callback_path
-#         super
-#       end
-
-#       def mock_call!(*)
-#         options.delete(:callback_path)
-#         super
-#       end
 
     private
       def raw_info
