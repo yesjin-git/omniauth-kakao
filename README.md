@@ -1,4 +1,4 @@
-# OmniAuth Kakao
+# OmniAuth2 Kakao
 
 This is the OmniAuth strategy for authenticating to [Kakao](http://www.kakao.com/). To
 use it, you'll need to sign up for an REST API Key on the [Kakao Developers Page](http://developers.kakao.com). For more information, please refer to [Create New Application](https://developers.kakao.com/docs/restapi#시작하기-앱-생성) page.
@@ -12,7 +12,7 @@ Add to your `Gemfile`:
 `Gemfile`에 다음의 코드를 넣어주세요.
 
 ```ruby
-gem 'omniauth-kakao'
+gem 'omniauth2-kakao'
 ```
 
 Then `bundle install`.
@@ -21,52 +21,73 @@ Then `bundle install`.
 
 ## Usage
 
-Here's a quick example, adding the middleware to a Rails app in `config/initializers/omniauth.rb`:
-
 다음은 간단한 예제입니다. `config/initializers/omniauth.rb`에서 미들웨어(Middleware)를 레일즈 어플리케이션에 넣어주세요.
 
 
 ```ruby
-Rails.application.config.middleware.use OmniAuth::Builder do
-  provider :kakao, ENV['KAKAO_CLIENT_ID']
-
-  # 또는 Redirect Path를 설정하고 싶다면(or if you want to customize your Redirect Path)
-  # provider :kakao, ENV['KAKAO_CLIENT_ID'], {:redirect_path => ENV['REDIRECT_PATH']}
-end
+  # devise.rb 파일에 omniauth를 위한 환경을 설정해줍니다. ENV["KAKAO_REST_API_KEY"]는 local_env.yml에서 관리합니다.
+  # 참고 . https://qiita.com/alokrawat050/items/0d7791b3915579f95791
+config.omniauth :kakao, ENV["KAKAO_REST_API_KEY"]
 ```
 
-Then go to [My Application](https://developers.kakao.com/apps) page, select your current application and add your domain address(ex: http://localhost:3000/) to  'Setting - Platform - Web - Site Domain'.
+
 
 그리고 [내 어플리케이션](https://developers.kakao.com/apps)에서 현재 어플리케이션을 선택하고, '설정 - 플랫폼 - 웹 - 사이트 도메인'에  도메인 주소(예: http://localhost:3000/)를 넣어주세요.
 
-![이미지](https://developers.kakao.com/assets/images/dashboard/dev_011.png)
+그리고 Redirect Path에는 /users/auth/kakao/callback이라고 적어주세요.
 
-For more information, please read the [OmniAuth](https://github.com/intridea/omniauth) docs for detailed instructions.
+Ruby on rails를 활용하고 계신 분의 경우, 하단의 링크를 보고 하나씩 해보시면 됩니다.
+https://github.com/plataformatec/devise/wiki/OmniAuth:-Overview
 
-더 자세한 사항은 [OmniAuth](https://github.com/intridea/omniauth)의 문서를 참고해 주세요.
-
-## Example
-
-You can test omniauth-kakao in the `example/` folder.
-
-`example/` 폴더에 있는 예제를 통해 omniauth-kakao를 테스트해볼 수 있습니다.
-
-```
-cd example/
-bundle install
-KAKAO_CLIENT_ID='<your-kakako-client-id>' ruby app.rb
-
-# 또는 Redirect Path를 설정하고 싶다면(or if you want to customize your Redirect Path)
-# KAKAO_CLIENT_ID='<your-kakako-client-id>' REDIRECT_PATH='<your-redirect-path>' ruby app.rb
+```ruby
+  # kakao login page link
+<%= link_to "Sign in with Kakaotalk", user_kakaotalk_omniauth_authorize_path %>
 ```
 
-Then open `http://localhost:4567/` in your browser.
+`config/routes.rb`
+```ruby
 
-이후 `http://localhost:4567/`로 접속하시면 됩니다.
+devise_for :users, controllers: { omniauth_callbacks: 'users/omniauth_callbacks' }
+```
 
-Warning: Do not forgot to add `http://localhost:4567/` in [My Application](https://developers.kakao.com/apps).
 
-주의: [내 어플리케이션](https://developers.kakao.com/apps) 의 '설정된 플랫폼 - 웹 - 사이트 도메인'에 `http://localhost:4567/`을 넣는 걸 잊지 마세요.
+`app/controllers/users/omniauth_callback_controller.rb`
+```ruby
+class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
+  def kakaotalk
+    # You need to implement the method below in your model (e.g. app/models/user.rb)
+    @user = User.from_omniauth(request.env["omniauth.auth"])
+
+    if @user.persisted?
+      sign_in_and_redirect @user, event: :authentication #this will throw if @user is not activated
+      set_flash_message(:notice, :success, kind: "Facebook") if is_navigational_format?
+    else
+      session["devise.kakaotalk_data"] = request.env["omniauth.auth"]
+      redirect_to new_user_registration_url
+    end
+  end
+
+  def failure
+    redirect_to root_path
+  end
+end
+```
+
+`app/model/user.rb`
+```ruby
+def self.from_omniauth(auth)
+  where(provider: auth.provider, uid: auth.uid).first_or_create do |user|
+    user.email = auth.info.email
+    user.password = Devise.friendly_token[0, 20]
+    user.name = auth.info.name   # assuming the user model has a name
+    user.image = auth.info.image # assuming the user model has an image
+    # If you are using confirmable and the provider(s) you use validate emails, 
+    # uncomment the line below to skip the confirmation emails.
+    # user.skip_confirmation!
+  end
+end
+```
+
 
 ## Auth Hash
 
@@ -102,6 +123,7 @@ Here's an example *Auth Hash* available in `request.env['omniauth.auth']`:
 * [Shayne Sung-Hee Kang](https://github.com/shaynekang)
 * [Hong Chulju](https://github.com/fegs)
 * [leekorea(hans-hk)](https://github.com/hans-hk)
+* [yesjin](https://blog.naver.com/yesjin_nav
 
 ## Contribute
 
